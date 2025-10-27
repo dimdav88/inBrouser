@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Тайм-трекер (за добу)</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#111827ee; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e;
+      --danger:#ef4444; --warn:#f59e0b; --shadow: 0 10px 30px rgba(0,0,0,.45); --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 80% -10%, #1e293b 0, rgba(30,41,59,0) 60%), linear-gradient(180deg, #0b1222, #0a0f1c);
+      color:var(--text); display:grid; place-items:center; padding:24px;
+    }
+    .wrap{width:min(920px,100%)}
+    header{display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px}
+    header h1{font-size: clamp(20px, 2.6vw, 32px); margin:0; letter-spacing:.2px}
+    .card{background:linear-gradient(180deg, rgba(17,24,39,.85), rgba(17,24,39,.65)); border:1px solid rgba(148,163,184,.2);
+      border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; backdrop-filter: blur(6px);
+    }
+    .grid{display:grid; grid-template-columns:1fr; gap:16px}
+    @media(min-width:800px){.grid{grid-template-columns:1.2fr .8fr}}
+    label{display:block; font-size:14px; color:var(--muted); margin-bottom:6px}
+    select,input[type="text"]{width:100%; padding:14px 14px; border-radius:12px; border:1px solid rgba(148,163,184,.25); background:#0b1220; color:var(--text); outline:none; transition:border .2s, box-shadow .2s; font-size:16px;}
+    select:focus,input[type="text"]:focus{border-color:#60a5fa; box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+    .timer{display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; font-size: clamp(42px, 7vw, 84px); font-weight:700; letter-spacing:1px; padding:16px 0}
+    .btns{display:flex; gap:10px; flex-wrap:wrap}
+    button{appearance:none; border:none; cursor:pointer; padding:12px 16px; border-radius:14px; font-weight:600; font-size:15px; color:#0b1220; transition: transform .06s ease, box-shadow .2s ease, opacity .2s ease; box-shadow: 0 6px 16px rgba(0,0,0,.25); display:inline-flex; align-items:center; gap:8px;}
+    button span.icon{font-size:18px}
+    button.primary{ background: linear-gradient(180deg, #34d399, #22c55e); }
+    button.warn{ background: linear-gradient(180deg, #fbbf24, #f59e0b); }
+    button.danger{ background: linear-gradient(180deg, #fb7185, #ef4444); color:#fff; }
+    button:disabled{opacity:.5; cursor:not-allowed}
+    button:active{ transform: translateY(1px) }
+    .muted{color:var(--muted)}
+    .row{display:flex; align-items:center; gap:12px; justify-content:space-between}
+    table{width:100%; border-collapse: collapse;}
+    th,td{padding:10px 12px; border-bottom:1px dashed rgba(148,163,184,.25); text-align:left; font-size:14px}
+    th{color:var(--muted); font-weight:600}
+    .tools{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end}
+    .pill{padding:8px 12px; border-radius:999px; border:1px solid rgba(148,163,184,.25); background:#0b1220; color:var(--text); cursor:pointer}
+    .shake{animation:shake .2s ease-in-out 2}
+    @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-3px)}50%{transform:translateX(3px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Тайм-трекер</h1>
+      <div class="tools">
+        <button class="pill" id="exportTodayBtn">Експорт за сьогодні (CSV)</button>
+        <button class="pill" id="exportAllBtn">Експорт всіх (CSV)</button>
+        <button class="pill" id="clearBtn">Очистити логи</button>
+      </div>
+    </header>
+    <div class="grid">
+      <section class="card">
+        <label for="project">Назва проєкту (виберіть або введіть нову)</label>
+        <input id="newProject" type="text" placeholder="Введіть новий проєкт" />
+        <select id="project"></select>
+
+        <div class="timer" id="display">00:00:00</div>
+        <div class="btns">
+          <button id="startBtn" class="primary"><span class="icon">▶</span> Пуск</button>
+          <button id="pauseBtn" class="warn" disabled><span class="icon">⏸</span> Пауза</button>
+          <button id="stopBtn" class="danger" disabled><span class="icon">⏹</span> Стоп</button>
+        </div>
+        <p class="muted" style="margin-top:10px">Після «Стоп» запис зберігається лише у локальному логу. CSV-файл створюється тільки по командах «Експорт за сьогодні» або «Експорт всіх».</p>
+      </section>
+      <section class="card">
+        <div class="row" style="margin-bottom:8px">
+          <strong>Логи за сьогодні</strong>
+          <small id="todayLabel" class="muted"></small>
+        </div>
+        <div style="max-height: 320px; overflow:auto">
+          <table id="todayTable"><thead><tr><th>Час</th><th>Проєкт</th><th>Тривалість</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+    </div>
+    <section class="card" style="margin-top:16px">
+      <div class="row" style="margin-bottom:8px">
+        <strong>Усі збережені записи</strong>
+        <small class="muted">Зберігаються лише локально у вашому браузері</small>
+      </div>
+      <div style="max-height: 320px; overflow:auto">
+        <table id="allTable"><thead><tr><th>Дата</th><th>Початок</th><th>Проєкт</th><th>Тривалість</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+  </div>
+  <script>
+     // -------- Helpers ---------
+    const pad = n => String(n).padStart(2, '0');
+    const formatHMS = ms => {
+      const s = Math.floor(ms / 1000);
+      const hrs = Math.floor(s / 3600);
+      const mins = Math.floor((s % 3600)/60);
+      const secs = s % 60;
+      return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+    };
+    const todayStr = (d = new Date()) => d.toISOString().slice(0,10);
+    const timeStr = (d = new Date()) => d.toTimeString().slice(0,8);
+
+    const STORAGE_KEY = 'timeLogs.v1';
+    const PROJECTS_KEY = 'timeProjects.v1';
+
+    function loadLogs(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY))||[] }catch{return []}}
+    function saveLogs(logs){ localStorage.setItem(STORAGE_KEY, JSON.stringify(logs)) }
+    function loadProjects(){ try{ return JSON.parse(localStorage.getItem(PROJECTS_KEY))||[] }catch{return []} }
+    function saveProjects(projects){ localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects)) }
+
+    function addLogEntry(entry){
+      const logs = loadLogs();
+      // сумування часу по проекту з дня у день
+      const existing = logs.find(l => l.project === entry.project);
+      if(existing){ existing.durationMs += entry.durationMs; existing.duration = formatHMS(existing.durationMs); }
+      else logs.push(entry);
+      saveLogs(logs);
+    }
+
+    const display = document.getElementById('display');
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const stopBtn  = document.getElementById('stopBtn');
+    const projectSelect = document.getElementById('project');
+    const newProjInput = document.getElementById('newProject');
+
+    let state = { running:false, startTime:null, elapsed:0, tickId:null, startDate:todayStr(), startedAtClock:null };
+
+    function updateButtons(){
+      startBtn.disabled = state.running;
+      pauseBtn.disabled = !state.running;
+      stopBtn.disabled = !state.running && state.elapsed===0;
+    }
+
+    function tick(){
+      const now = Date.now();
+      const total = state.elapsed + (state.running?(now-state.startTime):0);
+      display.textContent = formatHMS(total);
+    }
+
+    function renderProjects(){
+      const projects = loadProjects();
+      projectSelect.innerHTML = '';
+      for(const p of projects){
+        const opt = document.createElement('option'); opt.value=p; opt.textContent=p;
+        projectSelect.appendChild(opt);
+      }
+    }
+	function renderTables(){
+  const logs = loadLogs();
+  const tbodyAll = document.querySelector('#allTable tbody');
+  tbodyAll.innerHTML = '';
+  for(const e of logs.slice().reverse()){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${e.date}</td><td>${e.time}</td><td>${escapeHtml(e.project)}</td><td>${e.duration}</td>`;
+    tbodyAll.appendChild(tr);
+  }
+
+  const today = todayStr();
+  document.querySelector('#todayLabel').textContent = today;
+  const tbodyToday = document.querySelector('#todayTable tbody');
+  tbodyToday.innerHTML = '';
+  for(const e of logs.filter(x => x.date === today).slice().reverse()){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${e.time}</td><td>${escapeHtml(e.project)}</td><td>${e.duration}</td>`;
+    tbodyToday.appendChild(tr);
+  }
+}
+
+function escapeHtml(str){ return String(str).replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+function downloadCSV(filename, rows){
+  const header = Object.keys(rows[0] || {date:'Дата', time:'Початок', project:'Проєкт', duration:'Тривалість'});
+  const escapeCSV = v => '"'+String(v).replace(/"/g,'""')+'"';
+  const lines = [header.join(',')].concat(rows.map(r=>header.map(k=>escapeCSV(r[k]??'')).join(',')));
+  const blob = new Blob(["\uFEFF"+lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},0);
+}
+
+function exportToday(){
+  const logs = loadLogs();
+  const today = todayStr();
+  const rows = logs.filter(x => x.date === today);
+  if(rows.length === 0){ alert('За сьогодні записів немає.'); return; }
+  downloadCSV(`time-log-${today}.csv`, rows);
+}
+
+function exportAll(){
+  const logs = loadLogs();
+  if(!logs.length){ alert('Записів ще немає.'); return; }
+  downloadCSV('time-log-all.csv', logs);
+}
+
+function clearLogs(){
+  if(confirm('Видалити всі локальні логи? Це дію не можна скасувати.')){
+    localStorage.removeItem(STORAGE_KEY); renderTables();
+  }
+}
+
+// -------- Timer logic ---------
+function start(){
+  let project = '';
+  if(newProjInput.value.trim()){
+    project = newProjInput.value.trim();
+    if(![...projectSelect.options].some(o=>o.value===project)){
+      const option = document.createElement('option'); option.value=project; option.textContent=project; projectSelect.appendChild(option);
+      const projects = loadProjects(); projects.push(project); saveProjects(projects);
+    }
+    projectSelect.value = project; newProjInput.value = '';
+  } else {
+    project = projectSelect.value;
+  }
+  if(!project){ alert('Введіть або оберіть назву проєкту перед стартом.'); return; }
+
+  if(state.running) return;
+  if(todayStr() !== state.startDate) reset();
+  state.running = true;
+  state.startTime = Date.now();
+  if(!state.startedAtClock) state.startedAtClock = timeStr();
+  updateButtons();
+  if(!state.tickId) state.tickId = setInterval(tick, 250);
+  tick();
+}
+
+function pause(){ if(!state.running) return; state.elapsed += Date.now()-state.startTime; state.running=false; updateButtons(); tick(); }
+
+function stop(){
+  if(!state.running && state.elapsed===0) return;
+  if(state.running) state.elapsed += Date.now()-state.startTime;
+  const durationMs = state.elapsed;
+  const entry = { date:state.startDate, time:state.startedAtClock||timeStr(), project:projectSelect.value, duration:formatHMS(durationMs), durationMs };
+  addLogEntry(entry); renderTables(); reset();
+}
+
+function reset(){ state.running=false; state.startTime=null; state.elapsed=0; state.startDate=todayStr(); state.startedAtClock=null; display.textContent='00:00:00'; updateButtons(); }
+
+startBtn.addEventListener('click', start);
+pauseBtn.addEventListener('click', pause);
+stopBtn.addEventListener('click', stop);
+document.getElementById('exportTodayBtn').addEventListener('click', exportToday);
+document.getElementById('exportAllBtn').addEventListener('click', exportAll);
+document.getElementById('clearBtn').addEventListener('click', clearLogs);
+window.addEventListener('keydown', e=>{ if(e.target.tagName==='INPUT') return; if(e.code==='Space'){ e.preventDefault(); state.running?pause():start(); } if((e.key||'').toLowerCase()==='s'){ e.preventDefault(); stop(); }});
+
+renderProjects();
+renderTables();
+updateButtons();
+state.tickId = setInterval(tick,250);
+
+  </script>
+</body>
+</html>
