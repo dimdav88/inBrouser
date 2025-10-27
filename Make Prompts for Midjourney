@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор промптов Midjourney</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: '▸';
+            margin-right: 10px;
+            color: #667eea;
+        }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+            text-align: left;
+        }
+
+        .btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .custom-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: border-color 0.3s;
+        }
+
+        .custom-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s;
+            margin-top: 20px;
+        }
+
+        .generate-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.5em;
+            color: #667eea;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 2em;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .prompt-output {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .copy-btn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .clear-btn {
+            padding: 8px 15px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        .clear-btn:hover {
+            background: #ee5a52;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ Генератор промптов Midjourney для архитектуры</h1>
+
+        <!-- 1. Стиль изображения -->
+        <div class="section">
+            <div class="section-title">
+                1. Стиль изображения
+                <button class="clear-btn" onclick="clearSection('style')">Очистить</button>
+            </div>
+            <div class="buttons-grid" id="style-buttons">
+                <button class="btn" onclick="toggleSelection(this, 'style')">Octane render</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Blender</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Corona render</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">3ds Max</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Architecture sketch</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Watercolor architecture</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Concept art</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Ink render</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Photorealism</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Hyperrealistic</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Digital painting</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Isometric illustration</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Unreal render</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Flat illustration</button>
+                <button class="btn" onclick="toggleSelection(this, 'style')">Realistic</button>
+            </div>
+            <input type="text" class="custom-input" id="style-custom" placeholder="Введите свой вариант стиля...">
+        </div>
+
+        <!-- 2. Объект -->
+        <div class="section">
+            <div class="section-title">
+                2. Объект
+                <button class="clear-btn" onclick="clearSection('object')">Очистить</button>
+            </div>
+            <div class="buttons-grid" id="object-buttons">
+                <button class="btn" onclick="toggleSelection(this, 'object')">Skyscraper</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Residential building</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Apartment complex</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Private house</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Villa</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Office building</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Shopping mall</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Museum</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Stadium</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Bridge</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Tower</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Train station</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Parking garage</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Church</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Cathedral</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Theater</button>
+                <button class="btn" onclick="toggleSelection(this, 'object')">Opera house</button>
+            </div>
+            <input type="text" class="custom-input" id="object-custom" placeholder="Введите свой вариант объекта...">
+        </div>
+
+        <!-- 3. Архитектурный стиль -->
+        <div class="section">
+            <div class="section-title">
+                3. Архитектурный стиль
+                <button class="clear-btn" onclick="clearSection('arch-style')">Очистить</button>
+            </div>
+            <div class="buttons-grid" id="arch-style-buttons">
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Modernism</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Brutalism</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Minimalism</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">High-tech architecture</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Gothic</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Baroque</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Renaissance</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Art Deco</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Organic architecture</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Deconstructivism</button>
+                <button class="btn" onclick="toggleSelection(this, 'arch-style')">Japanese traditional</button>
+            </div>
+            <input type="text" class="custom-input" id="arch-style-custom" placeholder="Введите свой вариант стиля...">
+        </div>
+
+        <!-- 4. Имя архитектора -->
+        <div class="section">
+            <div class="section-title">
+                4. Имя архитектора
+                <button class="clear-btn" onclick="clearSection('architect')">Очистить</button>
+            </div>
+            <div class="buttons-grid" id="architect-buttons">
+                <button class="btn" onclick="toggleSelection(this, 'architect')">Norman Foster</button>
+                <button class="btn" onclick="toggleSelection(this, 'architect')">Renzo Piano</button>
+                <button class="btn" onclick="toggleSelection(this, 'architect')">Zaha Hadid</button>
+                <button class="btn" onclick="toggleSelection(this, 'architect')">Frank Gehry</button>
+                <button class="btn" onclick="toggleSelection(this, 'architect')">Le Corbusier</button>
+                <button class="btn" onclick="toggleSelection(this, 'architect')">Frank Lloyd Wright</button>
+            </div>
+            <input type="text" class="custom-input" id="architect-custom" placeholder="Введите имя архитектора...">
+        </div>
+
+        <!-- 5. Описание фасада -->
+        <div class="section">
+            <div class="section-title">
+                5. Описание фасада (материалы)
+                <button class="clear-btn" onclick="clearSection('facade')">Очистить</button>
+            </div>
+            <div class="buttons-grid" id="facade-buttons">
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Glass</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Concrete</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Metal</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Stone</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Wood</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Photovoltaic glass</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Perforated metal panels</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Carbon fiber</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">ETFE</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Glass and steel</button>
+                <button class="btn" onclick="toggleSelection(this, 'facade')">Reflective surfaces</button>
+            </div>
+            <input type="text" class="custom-input" id="facade-custom" placeholder="Введите описание фасада...">
+        </div>
+
+        <!-- 6. Вид/Ракурс -->
+        <div class="section">
+            <div class="section-title">
+                6. Вид/Ракурс
+                <button class="clear-btn" onclick="clearSection('view')">Очистить</button>
+            </div>
+            <div class="buttons-grid" id="view-buttons">
+                <button class="btn" onclick="toggleSelection(this, 'view')">Aerial view</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Bird's-eye view</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Front view</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Facade view</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Low angle shot</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Wide shot</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Interior view</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Cutaway view</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Perspective view</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Panoramic view</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Sunset view</button>
+                <button class="btn" onclick="toggleSelection(this, 'view')">Golden hour view</button>
+            </div>
+            <input type="text" class="custom-input" id="view-custom" placeholder="Введите свой вариант вида...">
+        </div>
+
+        <!-- 7. Окружение -->
+        <div class="section">
+            <div class="section-title">
+                7. Окружение
+                <button class="clear-btn" onclick="clearSection('environment')">Очистить</button>
+            </div>
+            <div class="buttons-grid" id="environment-buttons">
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Beach</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Seaside</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Mountains</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Forest</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Desert</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Cityscape</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Downtown</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Industrial area</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Suburban area</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Foggy environment</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Raining</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Golden hour</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Nighttime city</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Futuristic city</button>
+                <button class="btn" onclick="toggleSelection(this, 'environment')">Post-apocalyptic wasteland</button>
+            </div>
+            <input type="text" class="custom-input" id="environment-custom" placeholder="Введите свой вариант окружения...">
+        </div>
+
+        <!-- 8. Освещение -->
+        <div class="section">
+            <div class="section-title">
+                8. Освещение
+                <button class="clear-btn" onclick="clearSection('lighting')">Очистить</button>
+            </div>
+            <div class="buttons-grid" id="lighting-buttons">
+                <button class="btn" onclick="toggleSelection(this, 'lighting')">Natural light</button>
+                <button class="btn" onclick="toggleSelection(this, 'lighting')">Direct sunlight</button>
+                <button class="btn" onclick="toggleSelection(this, 'lighting')">Golden hour</button>
+                <button class="btn" onclick="toggleSelection(this, 'lighting')">Neon light</button>
+                <button class="btn" onclick="toggleSelection(this, 'lighting')">Night light</button>
+                <button class="btn" onclick="toggleSelection(this, 'lighting')">Spotlight</button>
+                <button class="btn" onclick="toggleSelection(this, 'lighting')">Cinematic lighting</button>
+                <button class="btn" onclick="toggleSelection(this, 'lighting')">Warming lighting</button>
+                <button class="btn" onclick="toggleSelection(this, 'lighting')">Mood light</button>
+            </div>
+            <input type="text" class="custom-input" id="lighting-custom" placeholder="Введите свой вариант освещения...">
+        </div>
+
+        <!-- 9. Дополнительные параметры -->
+        <div class="section">
+            <div class="section-title">
+                9. Дополнительные параметры Midjourney
+                <button class="clear-btn" onclick="clearSection('params')">Очистить</button>
+            </div>
+            <div class="buttons-grid" id="params-buttons">
+                <button class="btn" onclick="toggleSelection(this, 'params')">--ar 16:9</button>
+			    <button class="btn" onclick="toggleSelection(this, 'params')">--ar 9:16</button>
+                <button class="btn" onclick="toggleSelection(this, 'params')">--ar 2:3</button>
+                <button class="btn" onclick="toggleSelection(this, 'params')">--ar 1:1</button>
+                <button class="btn" onclick="toggleSelection(this, 'params')">--v 6</button>
+				<button class="btn" onclick="toggleSelection(this, 'params')">--v 7</button>
+                <button class="btn" onclick="toggleSelection(this, 'params')">--q 2</button>
+                <button class="btn" onclick="toggleSelection(this, 'params')">--stylize 400</button>
+				<button class="btn" onclick="toggleSelection(this, 'params')">--stylize 200</button>
+				<button class="btn" onclick="toggleSelection(this, 'params')">--stylize 150</button>
+                <button class="btn" onclick="toggleSelection(this, 'params')">--chaos 20</button>
+                <button class="btn" onclick="toggleSelection(this, 'params')">--no people</button>
+                <button class="btn" onclick="toggleSelection(this, 'params')">--tile</button>
+            </div>
+            <input type="text" class="custom-input" id="params-custom" placeholder="Введите дополнительные параметры...">
+        </div>
+
+        <button class="generate-btn" onclick="generatePrompt()">✨ Генерировать промпт</button>
+    </div>
+
+    <!-- Модальное окно -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Ваш промпт готов!</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="prompt-output" id="prompt-output"></div>
+            <button class="copy-btn" onclick="copyPrompt()">📋 Копировать промпт</button>
+        </div>
+    </div>
+
+    <script>
+        const selections = {
+            style: [],
+            object: [],
+            'arch-style': [],
+            architect: [],
+            facade: [],
+            view: [],
+            environment: [],
+            lighting: [],
+            params: []
+        };
+
+        function toggleSelection(btn, category) {
+            const text = btn.textContent;
+            const index = selections[category].indexOf(text);
+            
+            if (index > -1) {
+                selections[category].splice(index, 1);
+                btn.classList.remove('selected');
+            } else {
+                selections[category].push(text);
+                btn.classList.add('selected');
+            }
+        }
+
+        function clearSection(category) {
+            selections[category] = [];
+            const buttons = document.querySelectorAll(`#${category}-buttons .btn`);
+            buttons.forEach(btn => btn.classList.remove('selected'));
+            document.getElementById(`${category}-custom`).value = '';
+        }
+
+        function generatePrompt() {
+            let prompt = [];
+
+            // Собираем все выбранные параметры
+            Object.keys(selections).forEach(category => {
+                const customInput = document.getElementById(`${category}-custom`).value.trim();
+                const allItems = [...selections[category]];
+                
+                if (customInput) {
+                    allItems.push(customInput);
+                }
+
+                if (allItems.length > 0) {
+                    prompt.push(allItems.join(', '));
+                }
+            });
+
+            if (prompt.length === 0) {
+                alert('Пожалуйста, выберите хотя бы один параметр!');
+                return;
+            }
+
+            const finalPrompt = prompt.join(', ');
+            document.getElementById('prompt-output').textContent = finalPrompt;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function copyPrompt() {
+            const promptText = document.getElementById('prompt-output').textContent;
+            navigator.clipboard.writeText(promptText).then(() => {
+                alert('Промпт скопирован в буфер обмена!');
+            });
+        }
+
+        // Закрытие модального окна при клике вне его
+        window.onclick = function(e) {
+            const modal = document.getElementById('modal');
+            if (e.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
